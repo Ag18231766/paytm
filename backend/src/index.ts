@@ -1,11 +1,13 @@
-import express from 'express';
+import express,{Request} from 'express';
 import { Router } from './routes';
 import {connect} from 'mongoose';
+import cors from 'cors';
 const app = express();
 
 const dbUrl = 'mongodb://localhost:27017/paytm';
-app.use('/api/v1',Router);
 
+app.use('/api/v1',Router);
+app.use(cors<Request>());
 
 
 
