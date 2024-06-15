@@ -23,7 +23,7 @@ const userSchema = new Schema<User>({
 })
 
 const accountSchema = new Schema<Account>({
-    userId : {type:Schema.Types.ObjectId,ref:'User'},
+    userId : {type:Schema.Types.ObjectId,ref:'User',required:true},
     balance : {type: Number,required:true}
 })
 
