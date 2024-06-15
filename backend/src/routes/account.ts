@@ -32,41 +32,47 @@ AccRouter.get('/balance',authMiddleware,async (req:CustomRequest,res:Response) =
 })
 
 AccRouter.post("/transfer",authMiddleware,async (req:CustomRequest,res:Response) => {
-    console.log(req.body);
-    const session = await mongoose.startSession();
+    const { amount, to } = req.body;
 
-    session.startTransaction();
+    const account = await AccountModel.findOne({
+        userId: req.UserId
+    });
 
-    const {amount,to} = req.body;
-
-    const account = await AccountModel.findOne({UserId:req.UserId}).session(session);
-
-    if(!account || account.balance < amount){
-        await session.abortTransaction()
-        return res.status(StatusCodes.BADREQUEST).json({
-            message : "Insufficient balance"
+    if (account && account.balance < amount) {
+        return res.status(400).json({
+            message: "Insufficient balance"
         })
     }
 
-    const toAccount = await AccountModel.findOne({ UserId: to }).session(session);
+    const toAccount = await AccountModel.findOne({
+        UserId: to
+    });
 
     if (!toAccount) {
-        await session.abortTransaction();
-        return res.status(StatusCodes.BADREQUEST).json({
+        return res.status(400).json({
             message: "Invalid account"
-        });
+        })
     }
 
-    // Perform the transfer
-    await AccountModel.updateOne({ UserId: req.UserId }, { $inc: { balance: -amount } }).session(session);
-    await AccountModel.updateOne({ UserId: to }, { $inc: { balance: amount } }).session(session);
+    await AccountModel.updateOne({
+        UserId: req.UserId
+    }, {
+        $inc: {
+            balance: -amount
+        }
+    })
 
-    // Commit the transaction
-    await session.commitTransaction();
+    await AccountModel.updateOne({
+        UserId: to
+    }, {
+        $inc: {
+            balance: amount
+        }
+    })
 
     res.json({
         message: "Transfer successful"
-    });
+    })
 })
 
 export {AccRouter};
