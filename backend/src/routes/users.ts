@@ -3,17 +3,13 @@ import {z} from 'zod';
 import { UserModel } from '../db';
 import jwt from 'jsonwebtoken';
 import PassKey from '../config';
+import StatusCodes from '../StatusCode';
+import authMiddleware from '../middleware';
 const UserRouter = express();
 
 UserRouter.use(express.json());
 
-enum StatusCodes {
-    OK = 200,
-    CREATED = 201,
-    NOT_FOUND = 404,
-    CONFLICT = 409,
-    SERVICE_UNAVAILABLE = 503
-}
+
 
 const UserSchema = z.object({
     userName : z.string().email(),
@@ -27,6 +23,12 @@ const signInUserSchema = z.object({
     password: z.string()
 })
 
+const UpdateDetailSchema = z.object({
+    password : z.string().optional(),
+    firstName : z.string().optional(),
+    lastName : z.string().optional()
+})
+
 
 
 
@@ -38,19 +40,20 @@ UserRouter.post('/signup',async (req:Request,res:Response) => {
   
     const {success} = UserSchema.safeParse(req.body);
     if(!success){
-        res.send("input format is wrong");
+        return res.send("input format is wrong");
     }
 
 
     const isAUser = await UserModel.findOne({userName: req.body.userName});
     if(isAUser){
-        res.status(StatusCodes.CONFLICT).send('User with this userName or firstName already exists');
+        return res.status(StatusCodes.CONFLICT).send('User with this userName or firstName already exists');
+        
     }
 
 
     try{
         const newUser = await UserModel.create({userName: req.body.userName,firstName: req.body.firstName,lastName:req.body.lastName,password:req.body.password});
-        const token:string = jwt.sign({userId : newUser._id},PassKey);
+        const token = jwt.sign({userId : newUser._id.toString()},PassKey);
         res.status(StatusCodes.CREATED).json({
             token : token
         })
@@ -63,25 +66,49 @@ UserRouter.post('/signup',async (req:Request,res:Response) => {
 
 
 
-UserRouter.post('/signin',(req:Request,res:Response) => {
-    const {success} = UserSchema.safeParse(req.body);
+UserRouter.post('/signin',async (req:Request,res:Response) => {
+    const {success} = signInUserSchema.safeParse(req.body);
     if(!success){
-        res.send("input format is wrong");
+        return res.send("input format is wrong");
     }
     
     const {userName,password} = req.body;
 
-    const userRequestingSignIn = UserModel.findOne({userName : userName,password:password});
+    const userRequestingSignIn = await UserModel.findOne({userName : userName,password:password});
     if(!userRequestingSignIn){
-        res.status(StatusCodes.NOT_FOUND).json({
+        return res.status(StatusCodes.NOT_FOUND).json({
             message : "User doesn't exist"
         })
     }
 
-    const token = jwt.sign({userName},PassKey);
+    const token = jwt.sign({UserId : userRequestingSignIn?._id},PassKey);
     res.status(StatusCodes.OK).json({
         token : token
     })
 })
+
+
+UserRouter.put('/update',authMiddleware,async (req:Request,res:Response) => {
+    const {success} = UpdateDetailSchema.safeParse(req.body);
+    if(!success){
+        return res.status(StatusCodes.BADREQUEST).json({
+            message : 'please send valid details'
+        })
+    }
+    try{
+        await UserModel.updateOne({_id : req.body.UserId},req.body);
+        res.json({
+            message : "Updated successfully"
+        })
+    }catch(err){
+        console.log(err);
+        res.json({
+            message: "Error while updating information"
+        })
+    }
+
+})
+
+
 
 export {UserRouter};
