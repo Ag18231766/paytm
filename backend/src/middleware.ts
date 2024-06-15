@@ -8,12 +8,12 @@ interface UserPayload extends JwtPayload{
     UserId: string
 }
 
-// interface UserInterface extends Request{
-//     UserId:string
-// }
+interface CustomRequest extends Request {
+    UserId?: string;
+}
 
 
-const authMiddleware = (req:Request,res:Response,next:NextFunction) => {
+const authMiddleware = (req:CustomRequest,res:Response,next:NextFunction) => {
     const {authheader} = req.headers;
     if(!authheader || Array.isArray(authheader)){
         // console.log(req.headers);
@@ -29,9 +29,8 @@ const authMiddleware = (req:Request,res:Response,next:NextFunction) => {
         const decoded = jwt.verify(token,PassKey) as UserPayload;
         
         if(decoded){
-            console.log(decoded);
-            req.body.UserId = decoded.UserId;
-            console.log(req.body.UserId);
+            req.UserId = decoded.UserId;
+            console.log('hi there');
             next();
         }
     }catch(err){

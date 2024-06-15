@@ -9,7 +9,7 @@ interface User {
 }
 
 interface Account{
-    userId : Types.ObjectId,
+    UserId : Types.ObjectId,
     balance : number
 }
 
@@ -23,7 +23,7 @@ const userSchema = new Schema<User>({
 })
 
 const accountSchema = new Schema<Account>({
-    userId : {type:Schema.Types.ObjectId,ref:'User',required:true},
+    UserId : {type:Schema.Types.ObjectId,ref:'User',required:true},
     balance : {type: Number,required:true}
 })
 

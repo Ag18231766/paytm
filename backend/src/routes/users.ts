@@ -1,6 +1,6 @@
 import express, { Request,Response } from 'express'
 import {z} from 'zod';
-import { UserModel } from '../db';
+import { AccountModel, UserModel } from '../db';
 import jwt from 'jsonwebtoken';
 import PassKey from '../config';
 import StatusCodes from '../StatusCode';
@@ -9,7 +9,9 @@ const UserRouter = express();
 
 UserRouter.use(express.json());
 
-
+interface CustomRequest extends Request {
+    UserId?: string;
+}
 
 const UserSchema = z.object({
     userName : z.string().email(),
@@ -17,6 +19,8 @@ const UserSchema = z.object({
     lastName : z.string().optional(),
     password : z.string().min(8)
 })
+
+
 
 const signInUserSchema = z.object({
     userName : z.string().email(),
@@ -32,11 +36,11 @@ const UpdateDetailSchema = z.object({
 
 
 
-UserRouter.get('/',(req:Request,res:Response) => {
+UserRouter.get('/',(req:CustomRequest,res:Response) => {
     res.send('hi from userrouter');
 })
 
-UserRouter.post('/signup',async (req:Request,res:Response) => {
+UserRouter.post('/signup',async (req:CustomRequest,res:Response) => {
   
     const {success} = UserSchema.safeParse(req.body);
     if(!success){
@@ -53,7 +57,8 @@ UserRouter.post('/signup',async (req:Request,res:Response) => {
 
     try{
         const newUser = await UserModel.create({userName: req.body.userName,firstName: req.body.firstName,lastName:req.body.lastName,password:req.body.password});
-        const token = jwt.sign({userId : newUser._id.toString()},PassKey);
+        await AccountModel.create({UserId:newUser._id,balance:(Math.random() * 10000) + 1});
+        const token = jwt.sign({UserId : newUser._id.toString()},PassKey);
         res.status(StatusCodes.CREATED).json({
             token : token
         })
@@ -66,7 +71,7 @@ UserRouter.post('/signup',async (req:Request,res:Response) => {
 
 
 
-UserRouter.post('/signin',async (req:Request,res:Response) => {
+UserRouter.post('/signin',async (req:CustomRequest,res:Response) => {
     const {success} = signInUserSchema.safeParse(req.body);
     if(!success){
         return res.send("input format is wrong");
@@ -88,7 +93,7 @@ UserRouter.post('/signin',async (req:Request,res:Response) => {
 })
 
 
-UserRouter.put('/update',authMiddleware,async (req:Request,res:Response) => {
+UserRouter.put('/update',authMiddleware,async (req:CustomRequest,res:Response) => {
     const {success} = UpdateDetailSchema.safeParse(req.body);
     if(!success){
         return res.status(StatusCodes.BADREQUEST).json({
@@ -96,7 +101,7 @@ UserRouter.put('/update',authMiddleware,async (req:Request,res:Response) => {
         })
     }
     try{
-        await UserModel.updateOne({_id : req.body.UserId},req.body);
+        await UserModel.updateOne({_id : req.UserId},req.body);
         res.json({
             message : "Updated successfully"
         })
@@ -109,7 +114,7 @@ UserRouter.put('/update',authMiddleware,async (req:Request,res:Response) => {
 
 })
 
-UserRouter.get('/bulk',authMiddleware,async (req:Request,res:Response) => {
+UserRouter.get('/bulk',authMiddleware,async (req:CustomRequest,res:Response) => {
     const {filter} = req.query;
     console.log(typeof filter);
     const users = await UserModel.find({
