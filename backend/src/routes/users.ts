@@ -1,6 +1,6 @@
 import express, { Request,Response } from 'express'
 import {z} from 'zod';
-import { AccountModel, UserModel } from '../db';
+import { AccountModel, User, UserModel } from '../db';
 import jwt from 'jsonwebtoken';
 import PassKey from '../config';
 import StatusCodes from '../StatusCode';
@@ -26,6 +26,7 @@ const signInUserSchema = z.object({
     userName : z.string().email(),
     password: z.string()
 })
+type SigningInUserType = z.infer<typeof signInUserSchema>;
 
 const UpdateDetailSchema = z.object({
     password : z.string().optional(),
@@ -36,19 +37,20 @@ const UpdateDetailSchema = z.object({
 
 
 
+
+
 UserRouter.get('/',(req:CustomRequest,res:Response) => {
     res.send('hi from userrouter');
 })
 
 UserRouter.post('/signup',async (req:CustomRequest,res:Response) => {
-  
     const {success} = UserSchema.safeParse(req.body);
     if(!success){
         return res.send("input format is wrong");
     }
 
 
-    const isAUser = await UserModel.findOne({userName: req.body.userName});
+    const isAUser:User | null = await UserModel.findOne({userName: req.body.userName});
     if(isAUser){
         return res.status(StatusCodes.CONFLICT).send('User with this userName or firstName already exists');
         
@@ -56,7 +58,7 @@ UserRouter.post('/signup',async (req:CustomRequest,res:Response) => {
 
 
     try{
-        const newUser = await UserModel.create({userName: req.body.userName,firstName: req.body.firstName,lastName:req.body.lastName,password:req.body.password});
+        const newUser:User = await UserModel.create({userName: req.body.userName,firstName: req.body.firstName,lastName:req.body.lastName,password:req.body.password});
         await AccountModel.create({UserId:newUser._id,balance:(Math.random() * 10000) + 1});
         const token = jwt.sign({UserId : newUser._id.toString()},PassKey);
         res.status(StatusCodes.CREATED).json({
@@ -77,16 +79,17 @@ UserRouter.post('/signin',async (req:CustomRequest,res:Response) => {
         return res.send("input format is wrong");
     }
     
-    const {userName,password} = req.body;
+    
+    const SigningInUser:SigningInUserType = req.body;
 
-    const userRequestingSignIn = await UserModel.findOne({userName : userName,password:password});
+    const userRequestingSignIn = await UserModel.findOne({userName : SigningInUser.userName,password:SigningInUser.password});
     if(!userRequestingSignIn){
         return res.status(StatusCodes.NOT_FOUND).json({
             message : "User doesn't exist"
         })
     }
 
-    const token = jwt.sign({UserId : userRequestingSignIn?._id},PassKey);
+    const token:string = jwt.sign({UserId : userRequestingSignIn?._id},PassKey);
     res.status(StatusCodes.OK).json({
         token : token
     })
@@ -117,7 +120,8 @@ UserRouter.put('/update',authMiddleware,async (req:CustomRequest,res:Response) =
 UserRouter.get('/bulk',authMiddleware,async (req:CustomRequest,res:Response) => {
     const {filter} = req.query;
     console.log(typeof filter);
-    const users = await UserModel.find({
+    
+    const users:User[] = await UserModel.find({
         $or :[{
             firstName: {"$regex" :filter}
         },{

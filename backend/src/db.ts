@@ -2,10 +2,11 @@ import { Schema ,model,Types } from "mongoose";
 
 
 interface User {
-    userName : String,
-    firstName : String,
-    lastName : String,
-    password : String
+    _id : string
+    userName : string,
+    firstName : string,
+    lastName : string,
+    password : string
 }
 
 interface Account{
@@ -16,6 +17,7 @@ interface Account{
 
 
 const userSchema = new Schema<User>({
+    _id : Types.ObjectId,
     userName : {type:String,required :true},
     firstName : {type:String,required: true},
     lastName : {type :String,required: false},
@@ -34,5 +36,5 @@ const accountSchema = new Schema<Account>({
 const UserModel = model<User>('User',userSchema);
 const AccountModel = model<Account>('Account_User',accountSchema);
 
-export {UserModel,AccountModel}
+export {UserModel,AccountModel,User,Account}
 
