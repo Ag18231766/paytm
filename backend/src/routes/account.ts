@@ -1,6 +1,6 @@
 import express,{Request,Response} from 'express'
 import authMiddleware from '../middleware';
-import { AccountModel, UserModel } from '../db';
+import { Account, AccountModel, User, UserModel } from '../db';
 import StatusCodes from '../StatusCode';
 import mongoose from 'mongoose';
 
@@ -15,7 +15,7 @@ interface CustomRequest extends Request {
 AccRouter.get('/balance',authMiddleware,async (req:CustomRequest,res:Response) => {
     console.log('hi ther');
     try{
-        const SignedInUserAccount = await AccountModel.findOne({UserId:req.UserId});
+        const SignedInUserAccount:Account | null = await AccountModel.findOne({UserId:req.UserId});
         console.log(SignedInUserAccount);
         const balance = SignedInUserAccount?.balance;
         console.log(balance);
@@ -34,7 +34,7 @@ AccRouter.get('/balance',authMiddleware,async (req:CustomRequest,res:Response) =
 AccRouter.post("/transfer",authMiddleware,async (req:CustomRequest,res:Response) => {
     const { amount, to } = req.body;
 
-    const account = await AccountModel.findOne({
+    const account:Account | null = await AccountModel.findOne({
         userId: req.UserId
     });
 
@@ -44,7 +44,7 @@ AccRouter.post("/transfer",authMiddleware,async (req:CustomRequest,res:Response)
         })
     }
 
-    const toAccount = await AccountModel.findOne({
+    const toAccount:Account | null = await AccountModel.findOne({
         UserId: to
     });
 
